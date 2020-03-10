@@ -150,6 +150,12 @@
 ;////////////////GLOBAL///////////////////
 (defglobal 
         ?*dayTime* = "night")
+
+(defglobal
+    ?*nombre* = ""
+    ?*especie* = ""
+    ?*actualLoc* = ""
+    ?*vida* = "" )
 ;/////////////////////////////////////////
 
 
@@ -172,6 +178,7 @@
     (modify ?char (actLoc ?loc))
     (retract ?i)
 )
+
 (defrule changeCharLoc_noVal 
     (declare (salience 9))
     ?i <- (changeCharLoc ?n ?s ?loc)
@@ -278,15 +285,24 @@
     (retract ?i)
 )
 
+
+;/////////////////////////CONTINUAR//////////////////////////////
 (defrule main_menu_option_continue
     ?i <- (main_menu_option ?readed)
     (test(eq ?readed 1))
     =>
+    (if (eq 0 (str-compare "" ?*nombre*) ) then 
+        (printout t "No existe una partida creada." crlf)
+        (assert (main_menu))
+    else (printout t "Continua jugando")
+    )
     (retract ?i)
 )
 
 ;//////////Si elige la opcion 2
 
+
+;//////////////////////
 (defrule main_menu_option_new
     ?i <- (main_menu_option ?readed)
     (test(eq ?readed 2))
@@ -295,6 +311,7 @@
     (printout t "1:Draconid" crlf)
     (printout t "2:Vampire" crlf)
     (printout t "3:Human" crlf)
+    (printout t "4:Volver al menu" crlf)
     (assert (specie_option (read)))
     (retract ?i)
 )
@@ -308,7 +325,7 @@
     (printout t "Desea elegir 'Draconid'?" crlf)
     (printout t "Si" crlf)
     (printout t "No" crlf)
-    (assert (option (read)))
+    (assert (option (read) "Draconid"))
     (retract ?i)
 )
 
@@ -321,7 +338,7 @@
     (printout t "Desea elegir 'Vampire'?" crlf)
     (printout t "Si" crlf)
     (printout t "No" crlf)
-    (assert (option (read)))
+    (assert (option (read) "Vampire"))
     (retract ?i)
 )
 
@@ -334,19 +351,38 @@
     (printout t "Desea elegir 'Human'?" crlf)
     (printout t "Si" crlf)
     (printout t "No" crlf)
-    (assert (option (read)))
+    (assert (option (read) "Human"))
+    (retract ?i)
+)
+
+(defrule main_menu_character_return
+    ?i <- (specie_option ?readed)
+    (test(eq ?readed 4))
+    =>
+    (assert (main_menu))
     (retract ?i)
 )
 
 ;/////opcion no
 
-(defrule main_menu_character_no
-    ?i <- (option ?readed)
-    (test (or (eq ?readed No) (eq ?readed no) ) )
+(defrule main_menu_character
+    ?i <- (option ?readed ?spec)
+    (test (or (eq ?readed No) (eq ?readed Si) ) )
     =>
     (retract ?i)
-    (assert (main_menu_option 2))
+    (if (eq ?readed Si) then 
+        (bind ?*especie* ?spec)
+        (printout t "Ha seleccionado correctamente " ?*especie* crlf)
+    else (assert (main_menu_option 2))
+    )
+    
 )   
+
+(defrule select_name 
+    ?i <- (select_name ?readed ?spec)
+    =>
+    (printout t "Elija nombre" crlf)
+)
 
 (defrule main_menu_option_exit
     ?i <- (main_menu_option ?readed)
