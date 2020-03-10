@@ -30,7 +30,7 @@
         (name "Tadeus")
         (surname "Daemonenblut")
         (species "Vampire")
-        (actLoc "Twills Tower")
+        (actLoc "SIS insides")
 	(attack 50)
 	(resistence 500)
     )
@@ -58,24 +58,27 @@
         (surname "HD")
         (species "Vrother")
         (actLoc "Twills Tower")
-	   (vPhone "686286096")
-	(attack 70)
-	(resistence 300)    
+	    (vPhone "686286096")
+	    (attack 70)
+	    (resistence 1000)    
     )
+
     (character 
         (name "Vincent")
         (surname "Guepard")
         (species "Beast")
-        (actLoc "Comercial Street") 
-	(attack 80)
-	(resistence 200)   
+        (actLoc "SIS insides") 
+	    (attack 80)
+	    (resistence 200)   
     )
 	
 	(character 
 		(name "August")
 		(surname "Descence")
 		(species "Vampire")
-		(actLoc "Twills Tower")
+		(actLoc "Colisseum")
+        (attack 30)
+	    (resistence 100)   
 	)
 
 
@@ -87,7 +90,14 @@
 	    (open "no")
         (solFiltAct "no")
     )
-    
+
+    (location
+        (name "SIS insides")
+        (contacto "yes")
+        (open "no")
+        (solFiltAct "no")
+    )
+
     (location
         (name "Comercial Street")
         (contacto "no")
@@ -155,7 +165,9 @@
     ?*nombre* = ""
     ?*especie* = ""
     ?*actualLoc* = ""
-    ?*vida* = "" )
+    ?*vidaBase* = 200 
+    ?*vida* = 200
+)
 ;/////////////////////////////////////////
 
 
@@ -373,16 +385,60 @@
     (if (eq ?readed Si) then 
         (bind ?*especie* ?spec)
         (printout t "Ha seleccionado correctamente " ?*especie* crlf)
+        (assert (main_menu_choose_name))
     else (assert (main_menu_option 2))
     )
     
 )   
 
-(defrule select_name 
-    ?i <- (select_name ?readed ?spec)
+
+(defrule main_menu_choose_name
+    (declare (salience 10))
+    ?i <- (main_menu_choose_name)
     =>
-    (printout t "Elija nombre" crlf)
+    (printout t "Elija su nombre" crlf)
+    (assert (select_character_name (read)))
+    (retract ?i)
+
 )
+;////////////SELECCIONA NOMBRE
+(defrule select_name 
+    (declare (salience 10))
+    ?i <- (select_character_name ?readed)
+    (test (neq ?readed "") )
+    =>
+    (printout t "Desea ser " ?readed)
+    (printout t "?" crlf)
+    (printout t "Si" crlf)
+    (printout t "No" crlf)
+    (assert (main_menu_confirm_name (read) ?readed))
+    (retract ?i)
+)
+(defrule select_name_error 
+    (declare (salience 8))
+    ?i <- (select_character_name ?readed)
+    =>
+    (printout t "Error, nombre no valido")
+    (assert (main_menu_choose_name))
+    (retract ?i)
+)
+
+;//////////////////CONFIRMA NOMBRE
+(defrule confirm_name 
+
+    ?i <- (main_menu_confirm_name ?readed ?name)
+    (test (or (eq ?readed No) (eq ?readed Si) ) )
+    =>
+    (if (eq ?readed Si) then 
+        (bind ?*nombre* ?name)
+        (printout t "Se llamara " ?*nombre* crlf)
+    else
+        (assert (main_menu_choose_name))
+    )
+    (retract ?i)
+    
+)
+
 
 (defrule main_menu_option_exit
     ?i <- (main_menu_option ?readed)
@@ -401,6 +457,12 @@
 )
 
 
+;//////////////////////LOCAION MENU////////////////////
+(defrule menu_location
+    ?i <- (menu_location)
+    =>
+    (retract ?i)
+)
 
 ;//////////////FIGHT-BEGINS/////////////////////////////
 (defrule fight_begins 
@@ -475,7 +537,10 @@
 )
 
 
-
+;/////////////////////////////////////////FIGHT////////////////////////
+;(deffunction)
 ;(defrule type_conditions)
+
+
 
 
