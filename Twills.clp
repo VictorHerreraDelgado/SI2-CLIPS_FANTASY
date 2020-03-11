@@ -4,7 +4,7 @@
     	(slot species )
     	(slot actLoc)
     	(slot vPhone (type STRING))
-
+        (slot alive )
     	(slot attack (type INTEGER))
     	(slot resistence (type INTEGER))
 )
@@ -31,8 +31,9 @@
         (surname "Daemonenblut")
         (species "Vampire")
         (actLoc "SIS insides")
-	(attack 50)
-	(resistence 500)
+	    (attack 50)
+	    (resistence 500)
+        (alive 1)
     )
 
     (character
@@ -40,8 +41,9 @@
         (surname "Daemonenblut")
         (species "Vampire")
         (actLoc "Comercial Street")
-	(attack 30)
-	(resistence 700)
+	    (attack 30)
+	    (resistence 700)
+        (alive 1)
     )
 
     (character
@@ -49,8 +51,9 @@
         (surname "Leivadrac")
         (species "Draconid")
         (actLoc "Colisseum")
-	(attack 90)
-	(resistence 100)
+	    (attack 90)
+	    (resistence 100)
+        (alive 1)
     )
     
     (character 
@@ -60,7 +63,8 @@
         (actLoc "Twills Tower")
 	    (vPhone "686286096")
 	    (attack 70)
-	    (resistence 1000)    
+	    (resistence 1000)
+        (alive 1)    
     )
 
     (character 
@@ -69,7 +73,8 @@
         (species "Beast")
         (actLoc "SIS insides") 
 	    (attack 80)
-	    (resistence 200)   
+	    (resistence 200)
+        (alive 1)   
     )
 	
 	(character 
@@ -78,7 +83,8 @@
 		(species "Vampire")
 		(actLoc "Colisseum")
         (attack 30)
-	    (resistence 100)   
+	    (resistence 100)
+        (alive 1)   
 	)
 
 
@@ -537,9 +543,114 @@
 )
 
 
+
 ;/////////////////////////////////////////FIGHT////////////////////////
-;(deffunction)
-;(defrule type_conditions)
+(deffunction jankenpon (?dec1 ?dec2)
+    ;(if (and (eq ?dec1 contrataque) (eq ?dec2 ataque)) then (return 1) )
+    ;(if (and (eq ?dec2 contrataque) (eq ?dec1 ataque)) then (return -1) )
+
+    (if (and (eq ?dec1 2) (eq ?dec2 1)) then (return 1) )
+    (if (and (eq ?dec2 2) (eq ?dec1 1)) then (return -1) )
+
+    ;(if (and (eq ?dec1 agarre) (eq ?dec2 contrataque)) then (return 1) )
+    ;(if (and (eq ?dec2 agarre) (eq ?dec1 contrataque)) then (return -1) )
+
+    (if (and (eq ?dec1 3) (eq ?dec2 2)) then (return 1) )
+    (if (and (eq ?dec2 3) (eq ?dec1 2)) then (return -1) )
+
+    ;(if (and (eq ?dec1 ataque) (eq ?dec2 agarre)) then (return 1) )
+    ;(if (and (eq ?dec2 ataque) (eq ?dec1 agarre)) then (return -1) )
+
+    (if (and (eq ?dec1 1) (eq ?dec2 3)) then (return 1) )
+    (if (and (eq ?dec2 1) (eq ?dec1 3)) then (return -1) )
+
+    (return 0)
+)
+(deffunction type_advantage (?w1 ?myWek ?s1 ?myStr) 
+    (if (eq ?w1 ?myStr) then (return 1))
+    (if (eq ?myWek ?s1) then (return -1))
+    (return 0)
+)
+
+
+
+(defrule real_battle_begins
+    (declare (salience 10))
+    ?i <- (real_battle ?name ?surname )
+    (character (name ?name) (surname ?surname) (species ?sp1) (attack ?at1) (resistence ?res1) (actLoc ?lo1))
+    (species (name ?sp1) (weakness ?w1)
+        (strength ?s1))
+    (species (name ?sp1) (weakness ?myWek)
+        (strength ?myStr))
+    (test (> ?res1 0 ))
+    (test (neq(str-compare ?lo1 ?*actualLoc*) 0))
+    =>
+    (printout t "Te has encontrado con el " ?sp1 " " ?name " "?surname "." crlf)
+    (retract ?i)
+    (printout t "Elige una acción " crlf "1:Ataque " crlf "2:Contrataque" crlf "3:Agarre" crlf)
+    (bind ?typeAdv (type_advantage ?w1 ?myWek ?s1 ?myStr))
+    (assert (battle_action ?name ?surname ?at1 ?res1 ?typeAdv (read) ))
+)
+
+(defrule real_battle_begins_error
+    (declare (salience 9))
+    ?i <- (real_battle ?name ?surname )
+    =>
+    (printout t "Error, no se puede iniciar la pelea con " ?name " " ?surname "." crlf )
+    (retract ?i)
+
+)
+
+
+;////////////////////////////////////////INTO BATTLE////////////////////////////////////////////////
+
+(defrule battle_action_continue
+    ?i <- (battle_action ?name ?surname ?at1 ?res1 ?typeAdv ?choose)
+    (test (or (eq ?choose 1) (or (eq ?choose 2) (eq ?choose 3))))
+    =>
+    (retract ?i)
+    (if (or (not (> ?*vida* 0)) (not (> ?res1 0))) 
+    then 
+        (assert (battle_action_end))
+    else
+        (assert (battle_action ?name ?surname ?at1 ?res1 ?typeAdv (read))))
+    )    
+)
+
+(defrule battle_action_continue_error
+    (declare (salience 8))
+    ?i <- (battle_action ?name ?surname ?at1 ?res1 ?w1 ?myWek ?s1 ?myStr ?choose)
+    (test (and (neq ?choose 1) (and (neq ?choose 2) (neq ?choose 3))))
+    =>
+    (printout t "Ha habido un error" crlf)
+)
+
+
+;/////////////////////////////////////BATTLE ENDS/////////////////////////////////////////////
+(defrule battle_action_win
+    (declare (salience 9))
+    ?i <- (battle_action_end ?name ?surname ?res1 )
+    ?char <-(character (name ?name) (surname ?surname) (alive 1))
+    (test (and (> ?*vida* 0) (not (> ?res1 0)) ) )
+    =>
+    (printout t "Felicidades, has ganado" crlf);
+    (modify ?char (alive 0))
+    ;Assert a volver al mapa o seguir luchando
+)
+
+(defrule battle_action_loose
+    (declare (salience 10))
+    ?i <- (battle_action_end ?name ?surname ?res1)
+    (test (not (> ?*vida* 0)))
+    =>
+    (bind ?*actualLoc* "Hideout")
+    ;Assert a volver al mapa o seguir luchando
+)
+
+
+
+
+
 
 
 
