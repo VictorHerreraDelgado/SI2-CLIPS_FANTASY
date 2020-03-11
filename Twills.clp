@@ -158,10 +158,6 @@
 
 )
 
-(deffunction fightTipes (?spec1 ?spec2)
-
-
-)
 
 ;////////////////GLOBAL///////////////////
 (defglobal 
@@ -170,9 +166,13 @@
 (defglobal
     ?*nombre* = ""
     ?*especie* = ""
-    ?*actualLoc* = ""
+    ?*actualLoc* = "SIS insides"
+    ?*ataque* = 20
     ?*vidaBase* = 200 
     ?*vida* = 200
+    ?*key1* = 0
+    ?*key2* = 0
+    ?*key3* = 0
 )
 ;/////////////////////////////////////////
 
@@ -407,7 +407,7 @@
     (retract ?i)
 
 )
-;////////////SELECCIONA NOMBRE
+;////////////SELECCIONA NOMBRE////////////////////////
 (defrule select_name 
     (declare (salience 10))
     ?i <- (select_character_name ?readed)
@@ -437,12 +437,15 @@
     =>
     (if (eq ?readed Si) then 
         (bind ?*nombre* ?name)
-        (printout t "Se llamara " ?*nombre* crlf)
+        (printout t "Se llamara " ?*nombre*)
+        (printout t " y de especie sera " ?*especie* crlf)
+        (bind ?*actualLoc* "Hideout")
+        (assert (menu_location))
     else
         (assert (main_menu_choose_name))
     )
     (retract ?i)
-    
+
 )
 
 
@@ -463,11 +466,66 @@
 )
 
 
-;//////////////////////LOCAION MENU////////////////////
+;//////////////////////LOCATION MENU////////////////////
 (defrule menu_location
+    (declare(salience 10))
     ?i <- (menu_location)
     =>
+    (printout t "Te encuentras en " ?*actualLoc* )
+    (printout t ", que desea hacer?" crlf)
+    (printout t "1. Mover" crlf)
+    (if (eq ?*actualLoc* "Hideout")
+    then
+        (printout t "2. Curar" crlf)
+    else 
+        (printout t "2. Luchar" crlf)
+    )
+    (printout t "3. Datos" crlf)
+    (printout t "4. Guardar" crlf)
+    (assert (game_choose (read)))
     (retract ?i)
+)
+
+
+
+
+
+
+;////////ELIGE MOVERSE
+(defrule menu_location_move
+    ?i <- (game_choose ?readed)
+    (test(eq ?readed 1))
+    =>
+        (printout t "A donde desea moverse?" crlf )
+        (if (neq ?*actualLoc* "Colisseum") then (printout t "1. Colisseum" crlf))
+        (if (neq ?*actualLoc* "Comercial Street") then(printout t "2. Comercial Street" crlf))
+        (if (neq ?*actualLoc* "SIS Insides") then(printout t "3. SIS Insides" crlf))
+        (if (neq ?*actualLoc* "Hideout") then(printout t "4. Hideout" crlf))
+        (if (and (neq ?*actualLoc* "Twills Tower") (and (>= ?*key2* 1) (and (>= ?*key3* 1) (>= ?*key1* 1))))then(printout t "5. Twills Tower" crlf))
+
+        (printout t "6. Atras" crlf)
+        (assert (zone_to_move (read)))
+        (retract ?i)
+
+)
+
+
+(defrule move_to_zone
+    ?i <- (zone_to_move ?readed)
+    =>
+    (if (eq ?readed 1)
+    then
+        (if (neq ?*actualLoc* "Colisseum")
+        then
+            (bind ?*actualLoc* "Colisseum")
+            (assert (menu_location))
+            (retract ?i)
+        else
+        (printout t "No valido, vuelva a elegir la zona" crlf )
+        (assert (game_choose 1))
+        (retract ?i)
+        )
+    )
 )
 
 ;//////////////FIGHT-BEGINS/////////////////////////////
@@ -544,7 +602,7 @@
 
 
 
-;/////////////////////////////////////////FIGHT////////////////////////
+;/////////////////////////////////////////BATLLE////////////////////////
 (deffunction jankenpon (?dec1 ?dec2)
     ;(if (and (eq ?dec1 contrataque) (eq ?dec2 ataque)) then (return 1) )
     ;(if (and (eq ?dec2 contrataque) (eq ?dec1 ataque)) then (return -1) )
@@ -583,13 +641,13 @@
     (species (name ?sp1) (weakness ?myWek)
         (strength ?myStr))
     (test (> ?res1 0 ))
-    (test (neq(str-compare ?lo1 ?*actualLoc*) 0))
+    ;(test (neq(str-compare ?lo1 ?*actualLoc*) 0))
     =>
     (printout t "Te has encontrado con el " ?sp1 " " ?name " "?surname "." crlf)
     (retract ?i)
-    (printout t "Elige una acción " crlf "1:Ataque " crlf "2:Contrataque" crlf "3:Agarre" crlf)
+    (printout t "Elige una accion " crlf "1:Ataque " crlf "2:Contrataque" crlf "3:Agarre" crlf)
     (bind ?typeAdv (type_advantage ?w1 ?myWek ?s1 ?myStr))
-    (assert (battle_action ?name ?surname ?at1 ?res1 ?typeAdv (read) ))
+    (assert (battle_action ?name ?surname ?at1 ?res1 ?typeAdv (read) (mod (random) 3)))
 )
 
 (defrule real_battle_begins_error
@@ -604,45 +662,122 @@
 
 ;////////////////////////////////////////INTO BATTLE////////////////////////////////////////////////
 
-(defrule battle_action_continue
-    ?i <- (battle_action ?name ?surname ?at1 ?res1 ?typeAdv ?choose)
+(defrule battle_action_continue_neutral
+    ?i <- (battle_action ?name ?surname ?at1 ?res1 ?typeAdv ?choose ?eChoose)
     (test (or (eq ?choose 1) (or (eq ?choose 2) (eq ?choose 3))))
+    (test (eq  (jankenpon ?choose ?eChoose) 0 ))
     =>
-    (retract ?i)
+    (retract ?i)   
+    (printout t "neutral" crlf)
+    (printout t "Habeis hecho la usado la misma tactica y vuestros ataques se han neutralizado" crlf)
     (if (or (not (> ?*vida* 0)) (not (> ?res1 0))) 
     then 
-        (assert (battle_action_end))
+        (assert (battle_action_end ?name ?surname ?res1))
     else
-        (assert (battle_action ?name ?surname ?at1 ?res1 ?typeAdv (read))))
-    )    
+        (printout t "Tu vida es " ?*vida* "." crlf)
+        (printout t "La vida de tu rival es " ?res1 "." crlf)
+        (printout t "Elige una accion " crlf "1:Ataque " crlf "2:Contrataque" crlf "3:Agarre" crlf)
+        (assert (battle_action ?name ?surname ?at1 ?res1 ?typeAdv (read) (+ 1 (mod (random) 3)) ))
+        
+    ) 
+    
+)
+
+(defrule battle_action_continue_win
+    ?i <- (battle_action ?name ?surname ?at1 ?res1 ?typeAdv ?choose ?eChoose)
+    (test (or (eq ?choose 1) (or (eq ?choose 2) (eq ?choose 3))))
+    (test (eq  (jankenpon ?choose ?eChoose) 1 ))
+    =>
+    (retract ?i)   
+    (printout t "win" crlf)
+    (if 
+        (eq ?typeAdv 1) 
+    then 
+        (bind ?res1 (- ?res1 (* ?*ataque* 2)))
+        (printout t "Debido a tu tipo consigues hacerle " (* ?*ataque* 2) " de impacto." crlf)
+    else
+        (bind ?res1 (- ?res1  ?*ataque* ))
+        (printout t "Ganas ventaja sobre tu rival y le haces "?*ataque* " de impacto." crlf)
+    )
+
+    (if (or (not (> ?*vida* 0)) (not (> ?res1 0))) 
+    then 
+        (assert (battle_action_end ?name ?surname ?res1 ?at1))
+    else
+        (printout t "La vida de tu rival es " ?res1 "." crlf)
+        (printout t "Tu vida es " ?*vida* "." crlf)
+        (printout t "Elige una accion " crlf "1:Ataque " crlf "2:Contrataque" crlf "3:Agarre" crlf)
+        (assert (battle_action ?name ?surname ?at1 ?res1 ?typeAdv (read) (+ 1 (mod (random) 3))))
+    )
+     
+)
+
+(defrule battle_action_continue_lost
+    ?i <- (battle_action ?name ?surname ?at1 ?res1 ?typeAdv ?choose ?eChoose)
+    (test (or (eq ?choose 1) (or (eq ?choose 2) (eq ?choose 3))))
+    (test (eq  (jankenpon ?choose ?eChoose) -1 ))
+    =>
+    (retract ?i) 
+    (printout t "lost" crlf)
+    (if 
+        (eq ?typeAdv -1) 
+    then 
+        (bind ?*vida* (- ?*vida* (* ?at1 2)))
+        (printout t "Debido a tu tipo te hacen " (* ?at1 2) " de impacto." crlf)
+    else
+        (printout t "Pierdes la compostura y tu rival te hace " ?at1 " de impacto." crlf)
+        (bind ?*vida* (- ?*vida*  ?at1 ))
+    )
+    (if (or (not (> ?*vida* 0)) (not (> ?res1 0))) 
+    then 
+        (assert (battle_action_end ?name ?surname ?res1 ?at1))
+    else
+        (printout t "La vida de tu rival es " ?res1 "." crlf)
+        (printout t "Tu vida es " ?*vida* "." crlf)
+        (printout t "Elige una accion " crlf "1:Ataque " crlf "2:Contrataque" crlf "3:Agarre" crlf)
+        (assert (battle_action ?name ?surname ?at1 ?res1 ?typeAdv (read) (+ 1 (mod (random) 3))))
+    )   
+    
 )
 
 (defrule battle_action_continue_error
     (declare (salience 8))
-    ?i <- (battle_action ?name ?surname ?at1 ?res1 ?w1 ?myWek ?s1 ?myStr ?choose)
+    ?i <- (battle_action ?name ?surname ?at1 ?res1 ?typeAdv ?choose ?eChoose)
     (test (and (neq ?choose 1) (and (neq ?choose 2) (neq ?choose 3))))
     =>
+    (retract ?i)
     (printout t "Ha habido un error" crlf)
+    (printout t "Elige una accion " crlf "1:Ataque " crlf "2:Contrataque" crlf "3:Agarre" crlf)
+    (assert (battle_action ?name ?surname ?at1 ?res1 ?typeAdv (read) (mod (random) 3)))
+    
 )
 
 
 ;/////////////////////////////////////BATTLE ENDS/////////////////////////////////////////////
 (defrule battle_action_win
     (declare (salience 9))
-    ?i <- (battle_action_end ?name ?surname ?res1 )
+    ?i <- (battle_action_end ?name ?surname ?res1 ?at1)
     ?char <-(character (name ?name) (surname ?surname) (alive 1))
-    (test (and (> ?*vida* 0) (not (> ?res1 0)) ) )
+    (test (and (> ?*vida* 0) (not (> ?res1 0))))
     =>
-    (printout t "Felicidades, has ganado" crlf);
+    (printout t "Di molto, has ganado a " ?name " " ?surname "." crlf)
     (modify ?char (alive 0))
+    (bind ?*ataque* (+ ?*ataque* ?at1))
+    (bind ?*vidaBase* (+ ?*vidaBase* ?res1))
+    (printout t "Tus habilidades de combate han mejorado:" crlf "Ataque: " ?*ataque* "  Vida total: " ?*vidaBase*)
+    
+    (retract ?i)
     ;Assert a volver al mapa o seguir luchando
 )
 
 (defrule battle_action_loose
     (declare (salience 10))
-    ?i <- (battle_action_end ?name ?surname ?res1)
+    ?i <- (battle_action_end ?name ?surname ?res1 ?at1)
     (test (not (> ?*vida* 0)))
     =>
+    (retract ?i)
+    (printout t ?name " te ha dado una paliza." crlf "Vuelves a tu escondite con las fuerzas que te quedan" "." crlf);
+    (bind ?*vida* ?*vidaBase*)
     (bind ?*actualLoc* "Hideout")
     ;Assert a volver al mapa o seguir luchando
 )
