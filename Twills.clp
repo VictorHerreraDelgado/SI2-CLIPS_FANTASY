@@ -30,7 +30,7 @@
         (name "Tadeus")
         (surname "Daemonenblut")
         (species "Vampire")
-        (actLoc "SIS insides")
+        (actLoc "SIS Insides")
 	    (attack 50)
 	    (resistence 500)
         (alive 1)
@@ -71,7 +71,7 @@
         (name "Vincent")
         (surname "Guepard")
         (species "Beast")
-        (actLoc "SIS insides") 
+        (actLoc "SIS Insides") 
 	    (attack 80)
 	    (resistence 200)
         (alive 1)   
@@ -98,7 +98,7 @@
     )
 
     (location
-        (name "SIS insides")
+        (name "SIS Insides")
         (contacto "yes")
         (open "no")
         (solFiltAct "no")
@@ -152,10 +152,6 @@
         (strength "light")
 	)
 
-    
-
-
-
 )
 
 (deffunction fightTipes (?spec1 ?spec2)
@@ -168,9 +164,9 @@
         ?*dayTime* = "night")
 
 (defglobal
-    ?*nombre* = ""
+    ?*nombre* = "" 
     ?*especie* = ""
-    ?*actualLoc* = "SIS insides"
+    ?*actualLoc* = ""
     ?*ataque* = 20
     ?*vidaBase* = 200 
     ?*vida* = 200
@@ -178,6 +174,29 @@
     ?*key2* = 0
     ?*key3* = 0
 )
+
+;///////////CUANTOS HAY VIVOS EN EL LUGAR///////////
+(deffunction how_many_alive (?locName)
+    (bind ?charIn 0)
+    (do-for-all-facts ((?c character))
+        (and (eq ?c:actLoc ?locName) (eq ?c:alive 1))
+        (bind ?charIn (+ ?charIn 1))
+    )
+    return ?charIn
+)
+
+(deffunction appearing_enemy (?locName ?option)
+    (bind ?charIn 0)
+    (do-for-all-facts ((?c character))
+        (and (eq ?c:actLoc ?locName) (eq ?c:alive 1))
+        (if (eq ?option 1) then (return ?c:name))
+        (if (eq ?option 2) then (return ?c:surname))
+    )
+    (return 0)
+
+)
+;option = 1 nombre
+;option = 2 apellido
 ;/////////////////////////////////////////
 
 
@@ -313,10 +332,12 @@
     ?i <- (main_menu_option ?readed)
     (test(eq ?readed 1))
     =>
-    (if (eq 0 (str-compare "" ?*nombre*) ) then 
+    (if (eq "" ?*nombre* ) then 
         (printout t "No existe una partida creada." crlf)
         (assert (main_menu))
-    else (printout t "Continua jugando")
+    else 
+        (printout t "Continua jugando")
+        (assert (menu_location))
     )
     (retract ?i)
 )
@@ -387,7 +408,7 @@
 
 (defrule main_menu_character_error
     ?i <- (specie_option ?readed)
-    (test(>= ?readed 4))
+    (test(and (and (neq ?readed 1) (neq ?readed 4)) (and (neq ?readed 2) (neq ?readed 3))))
     =>
     (printout t "Opcion no valida" crlf)
     (assert (main_menu_option 2 ))
@@ -504,8 +525,9 @@
     )
     (printout t "3. Datos" crlf)
     (printout t "4. Guardar y Salir" crlf)
-    (assert (game_choose (read)))
     (retract ?i)
+    (assert (game_choose (read)))
+    
 )
 
 
@@ -536,28 +558,25 @@
 (defrule move_to_zone
     ?i <- (zone_to_move ?readed)
     =>
+    (retract ?i)
     (if (eq ?readed 1)
     then
         (if (neq ?*actualLoc* "Colisseum")
         then
-            (retract ?i)
             (bind ?*actualLoc* "Colisseum")
             (assert (menu_location))
         else
-        (retract ?i)
-        (printout t "No valido, vuelva a elegir la zona" crlf )
-        (assert (game_choose 1))
+            (printout t "No valido, vuelva a elegir la zona" crlf )
+            (assert (game_choose 1))
         )
     else
     (if (eq ?readed 2)
     then
         (if (neq ?*actualLoc* "Comercial Street")
         then
-            (retract ?i)
             (bind ?*actualLoc* "Comercial Street")
             (assert (menu_location))
         else
-            (retract ?i)
             (printout t "No valido, vuelva a elegir la zona" crlf )
             (assert (game_choose 1))
         )
@@ -567,11 +586,11 @@
     then
         (if (neq ?*actualLoc* "SIS Insides")
         then
-            (retract ?i)
+            
             (bind ?*actualLoc* "SIS Insides")
             (assert (menu_location))
         else
-            (retract ?i)
+            
             (printout t "No valido, vuelva a elegir la zona" crlf )
             (assert (game_choose 1))
         )
@@ -581,11 +600,11 @@
     then
         (if (neq ?*actualLoc* "Hideout")
         then
-            (retract ?i)
+            
             (bind ?*actualLoc* "Hideout")
             (assert (menu_location))
         else
-            (retract ?i)
+            
             (printout t "No valido, vuelva a elegir la zona" crlf )
             (assert (game_choose 1))
         )
@@ -595,11 +614,11 @@
     then
         (if (and (neq ?*actualLoc* "Twills Tower") (and (>= ?*key2* 1) (and (>= ?*key3* 1) (>= ?*key1* 1))))
         then
-            (retract ?i)
+            
             (bind ?*actualLoc* "Twills Tower")
             (assert (menu_location))
         else
-            (retract ?i)
+            
             (printout t "No valido, vuelva a elegir la zona" crlf )
             (assert (game_choose 1))
         )
@@ -607,16 +626,16 @@
     else
     (if (eq ?readed 6)
     then
-        (retract ?i)
         (assert (menu_location))
     )
     else
-    (if (> ?readed 6)
+    (if (and (and (neq ?readed 1) (neq ?readed 4)) (and (neq ?readed 2) (and (neq ?readed 3) (and (neq ?readed 5) (neq ?readed 6)))))
     then
         (printout t "No valido, vuelva a elegir la zona" crlf )
         (assert (game_choose 1))
+    )   
     )
-    )
+    
 )
 
 
@@ -626,9 +645,9 @@
     ?i <- (game_choose ?readed)
     (test (eq ?readed 2))
     =>
+        (retract ?i)
         (if (eq ?*actualLoc* "Hideout")
         then
-            (retract ?i)
             (if (< ?*vida* ?*vidaBase*)
             then
                 (bind ?*vida* ?*vidaBase*)
@@ -638,7 +657,7 @@
             )
             (assert(menu_location))
         else
-        (assert (real_battle "Xiangus" "Leivadrac"))
+        (assert (prebattle))
         )
         
 
@@ -783,7 +802,23 @@
     (return 0)
 )
 
+(defrule prebattle
+    ?i <- (prebattle)
+    (test(neq  ?*actualLoc* "Hideout") )
+    (test(neq (how_many_alive ?*actualLoc*) 0) )
+    =>
+    (retract ?i)
+    (assert (real_battle (appearing_enemy ?*actualLoc* 1) (appearing_enemy ?*actualLoc* 2)))
+)
 
+(defrule prebattle_no_One
+    ?i <- (prebattle)
+    (test(neq  ?*actualLoc* "Hideout") )
+    (test(eq (how_many_alive ?*actualLoc*) 0) )
+    =>
+    (retract ?i)
+    (assert (menu_location))
+)
 
 (defrule real_battle_begins
     (declare (salience 10))
@@ -917,9 +952,9 @@
     (modify ?char (alive 0))
     (bind ?*ataque* (+ ?*ataque* ?at1))
     (bind ?*vidaBase* (+ ?*vidaBase* ?res))
-    (printout t "Tus habilidades de combate han mejorado:" crlf "Ataque: " ?*ataque* "  Vida total: " ?*vidaBase*)
-
+    (printout t "Tus habilidades de combate han mejorado:" crlf "Ataque: " ?*ataque* "  Vida total: " ?*vidaBase* crlf)
     (retract ?i)
+    (assert (menu_location))
     ;Assert a volver al mapa o seguir luchando
 )
 
@@ -932,6 +967,7 @@
     (printout t ?name " te ha dado una paliza." crlf "Vuelves a tu escondite con las fuerzas que te quedan" "." crlf);
     (bind ?*vida* ?*vidaBase*)
     (bind ?*actualLoc* "Hideout")
+    (assert (menu_location))
     ;Assert a volver al mapa o seguir luchando
 )
 
@@ -970,7 +1006,7 @@
 
     (retract ?i)
     (printout t "Tu: Si hay un infierno, te vere alli" crlf)
-    (printout t ?name "Me tenias en jaque desde el inicio..." crlf)
+    (printout t ?name ": Me tenias en jaque desde el inicio..." crlf)
     (printout t "BOOOOOOOOOOOOOOMMMMMMMMMM    -99999" crlf)
     (bind ?res1 (- ?res1 99999))
     (bind ?*vida* (- ?*vida* 99999))
@@ -985,25 +1021,3 @@
     ) 
 )
 
-;///////////CUANTOS HAY VIVOS EN EL LUGAR///////////
-(deffunction how_many_alive (?locName)
-    (bind ?charIn 0)
-    (do-for-all-facts ((?c character))
-        (and (eq ?c:actLoc ?locName) (eq ?c:alive 1))
-        (bind ?charIn (+ ?charIn 1))
-    )
-    return ?charIn
-)
-
-(deffunction appearing_enemy (?locName ?option)
-    (bind ?charIn 0)
-    (do-for-all-facts ((?c character))
-        (and (eq ?c:actLoc ?locName) (eq ?c:alive 1))
-        (if (eq ?option 1) then (return ?c:name))
-        (if (eq ?option 2) then (return ?c:surname))
-    )
-    (return 0)
-
-)
-;option = 1 nombre
-;option = 2 apellido
