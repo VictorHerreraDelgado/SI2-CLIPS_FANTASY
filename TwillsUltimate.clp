@@ -157,14 +157,8 @@
 
 )
 
-(deffunction fightTipes (?spec1 ?spec2)
-
-
-)
 
 ;////////////////GLOBAL///////////////////
-(defglobal 
-        ?*dayTime* = "night")
 
 (defglobal
     ?*nombre* = "" 
@@ -207,105 +201,6 @@
 )
 ;option = 1 nombre
 ;option = 2 apellido
-;/////////////////////////////////////////
-
-
-(deffunction changeTime ()
-    (if (eq (str-compare ?*dayTime* night ) 0) then 
-        (bind ?*dayTime*  day)
-    else 
-        (bind ?*dayTime*  night) 
-    )
-
-)
-
-(defrule changeCharLoc 
-    (declare (salience 10))
-    ?i <- (changeCharLoc ?n ?s ?loc)
-    ?char <-(character (name ?n) (surname ?s) (actLoc ?oldLoc))
-    (exists (location (name ?loc)))
-    =>
-    (printout t "Se ha movido a " ?n " " ?s " a ")
-    (modify ?char (actLoc ?loc))
-    (retract ?i)
-)
-
-(defrule changeCharLoc_noVal 
-    (declare (salience 9))
-    ?i <- (changeCharLoc ?n ?s ?loc)
-    =>
-    (printout t "No se ha podido hacer el cambio de localización para el personaje")
-    (retract ?i)
-)
-
-
-;************EMERGENCE CALL******************
-
-(deffunction activate_solar_filter (?l ?n)
-    (modify ?l (solFiltAct "yes"))
-    ;(printout t "Ponemos filtro solar en " ?n crlf)
-)
-(deffunction deactivate_solar_filter (?l ?n)
-    (modify ?l (solFiltAct "no"))
-    ;(printout t "Quitamos filtro solar en " ?n crlf)   
-)
-
-(defrule emergence_call_to
-    (declare (salience 10))
-    ?i <- (emergence_call_to ?n ?s)
-    (character (name ?n) (surname ?s) (vPhone ?p))
-    (test (neq ?p ""))
-    =>
-    (printout t "Se ha llamado al telefono " ?p " para contactar con " ?n " " ?s "." crlf )
-    (retract ?i)
-)
-
-(defrule emergence_call_to_contact
-    (declare (salience 9))
-    ?i <- (emergence_call_to ?n ?s)
-    (character (name ?n) (surname ?s) (actLoc ?l))
-    (test (neq ?l ""))
-    (location(name ?l) (contacto ?c))
-    (test (eq ?c "yes"))
-    =>
-    (printout t "Se ha llamado al contacto en " ?l " para contactar con " ?n " " ?s "." crlf )
-    (retract ?i)
-)
-
-(defrule emergence_call_to_telepaty
-    (declare (salience 8))
-    ?i <- (emergence_call_to ?n ?s)
-    (character (name ?n) (surname ?s) (species ?l))
-    (test (neq ?l ""))
-    (species(name ?l) (telepaty ?t))
-    (test (eq ?t "yes"))
-    =>
-    (printout t "Se ha llamado al contacto " ?n " " ?s " usando telepatia." crlf )
-    (retract ?i)
-)
-
-(defrule solarFilter
-    (declare (salience 10))
-	?loc <- (location (name ?l) (open ?o) (solFiltAct ?sf))
-    (test (eq ?o "yes"))
-    =>
-    (bind ?total 0)
-    (bind ?lightWeak 0)
-    (do-for-all-facts ((?c character)) 
-        (eq ?c:actLoc ?l)
-        (bind ?total (+ ?total 1))
-        (bind ?w "light")
-        (do-for-all-facts ((?s species))
-            (eq ?c:species ?s:name)
-            (if (eq ?s:weakness ?w) then (bind ?lightWeak (+ ?lightWeak 1)))
-        )
-    )
-
-    
-    (if (and (and (neq ?lightWeak 0) (neq ?sf "yes")) (  > (/ ?total ?lightWeak) 0.45) ) then (activate_solar_filter ?loc ?l))
-    (if (and (neq ?sf "no") (or (eq ?lightWeak 0) ( < (/ ?total ?lightWeak) 0.45) )) then (deactivate_solar_filter ?loc ?l))
-
-)
 
 
 
@@ -511,7 +406,6 @@
         (printout t " y su especie sera " ?*especie* crlf)
         (printout t "" crlf)
         (bind ?*actualLoc* "Hideout")
-        ;Si quieres ver como aumenta su ataque y vida ilimitadamente, comenta lo de abajo
         (bind ?*ataque* 20)
         (bind ?*vidaBase* 200)
         (bind ?*vida* 200)
@@ -835,20 +729,12 @@
 
 ;/////////////////////////////////////////BATLLE////////////////////////
 (deffunction jankenpon (?dec1 ?dec2)
-    ;(if (and (eq ?dec1 contrataque) (eq ?dec2 ataque)) then (return 1) )
-    ;(if (and (eq ?dec2 contrataque) (eq ?dec1 ataque)) then (return -1) )
-
     (if (and (eq ?dec1 2) (eq ?dec2 1)) then (return 1) )
     (if (and (eq ?dec2 2) (eq ?dec1 1)) then (return -1) )
-
-    ;(if (and (eq ?dec1 agarre) (eq ?dec2 contrataque)) then (return 1) )
-    ;(if (and (eq ?dec2 agarre) (eq ?dec1 contrataque)) then (return -1) )
 
     (if (and (eq ?dec1 3) (eq ?dec2 2)) then (return 1) )
     (if (and (eq ?dec2 3) (eq ?dec1 2)) then (return -1) )
 
-    ;(if (and (eq ?dec1 ataque) (eq ?dec2 agarre)) then (return 1) )
-    ;(if (and (eq ?dec2 ataque) (eq ?dec1 agarre)) then (return -1) )
 
     (if (and (eq ?dec1 1) (eq ?dec2 3)) then (return 1) )
     (if (and (eq ?dec2 1) (eq ?dec1 3)) then (return -1) )
@@ -891,7 +777,6 @@
     (species (name ?mySpec) (weakness ?myWek)
         (strength ?myStr))
     (test (> ?res1 0 ))
-    ;(test (neq(str-compare ?lo1 ?*actualLoc*) 0))
     =>
     (printout t "" crlf)
     (printout t "Te has encontrado con el " ?sp1 " " ?name " "?surname "." crlf)
@@ -922,7 +807,6 @@
     (test (eq  (jankenpon ?choose ?eChoose) 0 ))
     =>
     (retract ?i)   
-    ;(printout t "neutral" crlf)
     (printout t "Habeis hecho la usado la misma tactica y vuestros ataques se han neutralizado" crlf)
     (printout t "" crlf)
     (if (or (not (> ?*vida* 0)) (not (> ?res1 0))) 
@@ -944,12 +828,11 @@
     (test (eq  (jankenpon ?choose ?eChoose) 1 ))
     =>
     (retract ?i)   
-    ;(printout t "win" crlf)
     (if 
         (eq ?typeAdv 1) 
     then 
         (bind ?res1 (- ?res1 (* ?*ataque* 2)))
-        (printout t "Tu especie tiene ventaja sobre la de tu rival. Consigues hacerle" (* ?*ataque* 2) " de impacto." crlf)
+        (printout t "Tu especie tiene ventaja sobre la de tu rival. Consigues hacerle " (* ?*ataque* 2) " de impacto." crlf)
     else
         (bind ?res1 (- ?res1  ?*ataque* ))
         (printout t "Ganas ventaja sobre tu rival y le haces "?*ataque* " de impacto." crlf)
@@ -974,7 +857,6 @@
     (test (eq  (jankenpon ?choose ?eChoose) -1 ))
     =>
     (retract ?i) 
-    ;(printout t "lost" crlf)
     (if 
         (eq ?typeAdv -1) 
     then 
@@ -1041,7 +923,7 @@
     (if (and (neq ?*actualLoc* "Twills Tower") (and(>= ?*key2* 1) (and (>= ?*key3* 1) (>= ?*key1* 1))))
     then
     (printout t "" crlf)
-    (printout t "HAS OBTENIDO LAS TRES LLAVES DESBLOQUEADO EL ACCESO A TWILLS TOWER!!!!!!!" crlf))
+    (printout t "HAS OBTENIDO LAS TRES LLAVES DESBLOQUEANDO EL ACCESO A TWILLS TOWER!!!!!!!" crlf))
 
     (if (and (eq ?*actualLoc* "Twills Tower") (eq (how_many_alive ?*actualLoc*) 0))
     then
